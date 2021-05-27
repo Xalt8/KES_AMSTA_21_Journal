@@ -5,6 +5,8 @@ from dataclasses import dataclass, astuple, field
 import random
 import time
 import matplotlib.pyplot as plt
+import cProfile, pstats, io # Needed for profile
+import concurrent.futures
 
 
 ### Read data ####
@@ -134,7 +136,6 @@ def random_back(position, velocity, demand, supply):
         else:
             print(f'random_back() returned an unfeasible vector')
 
-
 def time_function(function):
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -145,13 +146,55 @@ def time_function(function):
     return wrapper
 
 
-def plot_results(gbest_vals):
+def profile(fnc):
+    """ A decorator that uses cProfile to profile a function
+        Source: Sebastiaan Mathôt https://osf.io/upav8/
+    """
+    def inner(*args, **kwargs):
+        
+        pr = cProfile.Profile()
+        pr.enable()
+        retval = fnc(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        return retval
+
+    return inner
+
+
+# def plot_results(gbest_vals):
+#     x_axis_vals = [x for x in range(len(gbest_vals))]
+#     plt.plot(x_axis_vals, gbest_vals)
+#     plt.tight_layout()
+#     plt.xlabel("Iterations")
+#     plt.ylabel("Profit")
+#     plt.show()
+
+def plot_results(gbest_vals, total_time):
+    _, ax = plt.subplots() 
     x_axis_vals = [x for x in range(len(gbest_vals))]
-    plt.plot(x_axis_vals, gbest_vals)
+    ax.plot(x_axis_vals, gbest_vals)
+    ax.set_xlabel("Iterations")
+    ax.set_ylabel("Profit")
+    props1 = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    props2 = dict(boxstyle='round', facecolor='thistle', alpha=0.5)
+    ax.text(0.1, 0.9, 'last gbest_val: '+str(round(gbest_vals[-1],2)), transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props1)
+    ax.text(0.1, 0.7, 'total_time: '+str(round(total_time/60,2))+' minutes' , transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props2)
+    # ax.set_xlim([0,gbest_vals.size])
+    # ax.set_ylim([min(gbest_vals)-10, 10+max(gbest_vals)])
+    ax. ticklabel_format(useOffset=False, style='plain')
     plt.tight_layout()
-    plt.xlabel("Iterations")
-    plt.ylabel("Profit")
     plt.show()
+
+
+def split_list(particle_list, num_particles):
+    ''' Takes a list of particles and splits it by 
+        the num_particles -> list'''
+    return [particle_list[i:i+num_particles] for i in range(0, len(particle_list), num_particles)]
 
 
 @dataclass
@@ -227,15 +270,18 @@ class CPSO:
             new_pos = random_back(particle['position'], particle['velocity'], demand, supply)
             particle['position'] = np.floor(new_pos)
 
-
+    
+    
 def optimise(demand, supply):
     
-    iterations = 200
+    start = time.perf_counter()
+
+    iterations = 500
     
     gbest_val_list  = []
     gbest_pos_list  = []
     
-    swarm = CPSO(10)
+    swarm = CPSO(20)
     swarm.initialise(demand, supply)
     swarm.pick_informants_ring_topology()
     
@@ -255,11 +301,21 @@ def optimise(demand, supply):
             if feasible_vec(swarm.gbest_pos, demand, supply):
                 print("Constraints met!")
     
-    return np.array(gbest_val_list)
+    end = time.perf_counter()
+    total_time = round((end-start),2)
+
+    return np.array(gbest_val_list), total_time
+
+def experiment():
+    
+    num_runs = 100
+
+    
+
+
 
 
 if __name__ == '__main__':
-    print("In main")
-    gbest_vals = optimise(quantity.values, supply.values)
-    plot_results(gbest_vals)
-
+    gbest_vals, total_time = optimise(quantity.values, supply.values)
+    plot_results(gbest_vals, total_time)
+    

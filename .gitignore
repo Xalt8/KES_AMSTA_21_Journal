@@ -2,3 +2,5 @@ env
 Data.xlsx
 .vscode/settings.json
 test.ipynb
+**/__pycache__
+cpso_old.py

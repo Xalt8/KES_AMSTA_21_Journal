@@ -1,12 +1,11 @@
-
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass, astuple, field
 import random
 import time
 import matplotlib.pyplot as plt
-import cProfile, pstats, io # Needed for profile
-import concurrent.futures
+import cProfile, pstats, io # Needed for profile()
+import joblib
 
 
 ### Read data ####
@@ -91,32 +90,11 @@ def random_val(vec, index, demand, supply):
         return 0
 
 
-def random_back(position, velocity, demand, supply):
+def random_back(position, velocity):
     ''' Takes a position and a velocity and returns a new position that
         meets demand & supply constraints '''
-    
-    vec = position + velocity
-    if feasible_vec(vec, demand, supply):
-        return vec
-    else:
-        inds = np.where(demand.flatten()!=0)[0] # Returns a tuple -> (inds, )
-        new_pos = np.zeros(position.size)
-        for i in inds:
-            if poss_val(i, (int(position[i]+velocity[i])), new_pos, demand, supply):
-                new_pos[i] = int(position[i] + velocity[i])
-            else:
-                r = random_val(new_pos, i, demand, supply)
-                new_pos[i] = r
-        
-        if feasible_vec(new_pos, demand, supply):
-            return new_pos
-        else:
-            print(f'random_back() returned an unfeasible vector')
-
-
-def random_back(position, velocity, demand, supply):
-    ''' Takes a position and a velocity and returns a new position that
-        meets demand & supply constraints '''
+    global quantity, supply
+    demand = quantity.values
     
     vec = position + velocity
     if feasible_vec(vec, demand, supply):
@@ -166,14 +144,6 @@ def profile(fnc):
     return inner
 
 
-# def plot_results(gbest_vals):
-#     x_axis_vals = [x for x in range(len(gbest_vals))]
-#     plt.plot(x_axis_vals, gbest_vals)
-#     plt.tight_layout()
-#     plt.xlabel("Iterations")
-#     plt.ylabel("Profit")
-#     plt.show()
-
 def plot_results(gbest_vals, total_time):
     _, ax = plt.subplots() 
     x_axis_vals = [x for x in range(len(gbest_vals))]
@@ -183,7 +153,7 @@ def plot_results(gbest_vals, total_time):
     props1 = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     props2 = dict(boxstyle='round', facecolor='thistle', alpha=0.5)
     ax.text(0.1, 0.9, 'last gbest_val: '+str(round(gbest_vals[-1],2)), transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props1)
-    ax.text(0.1, 0.7, 'total_time: '+str(round(total_time/60,2))+' minutes' , transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props2)
+    ax.text(0.1, 0.7, 'total_time: '+str(round(total_time,2))+' seconds' , transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props2)
     # ax.set_xlim([0,gbest_vals.size])
     # ax.set_ylim([min(gbest_vals)-10, 10+max(gbest_vals)])
     ax. ticklabel_format(useOffset=False, style='plain')
@@ -197,9 +167,12 @@ def split_list(particle_list, num_particles):
     return [particle_list[i:i+num_particles] for i in range(0, len(particle_list), num_particles)]
 
 
+particle_list = joblib.load('particle_list')
+particles = split_list(particle_list, 20)
+
 @dataclass
-class CPSO:
-    num_particles : int
+class PSO:
+    num_particles : int = 20
     particles: list = field(init=False)
     gbest_val: float = -np.Inf
     gbest_pos: np.ndarray = np.empty(quantity.values.flatten().size)
@@ -250,69 +223,7 @@ class CPSO:
             if particle['lbest_val'] >= self.gbest_val:
                 self.gbest_val = particle['lbest_val']
                 self.gbest_pos = particle['lbest_pos']
-    
-
-    def set_constricted_velocity(self):
-        for particle in self.particles:
-            c1 = 2.05
-            c2 = 2.05
-            ep = c1+c2
-            X = 2/(abs(2-ep-np.sqrt((ep**2)-4*ep)))
-            dims = particle['position'].shape
-            cognitive = (c1 * np.random.uniform(0, 1, dims)*(particle['pbest_pos'] - particle['position']))
-            informers = (c2 * np.random.uniform(0, 1, dims)*(particle['lbest_pos'] - particle['position']))
-            new_velocity = X*(particle['velocity'] + cognitive + informers)
-            particle['velocity'] = new_velocity
-
-    
-    def move_random_back(self, demand, supply):
-        for particle in self.particles:
-            new_pos = random_back(particle['position'], particle['velocity'], demand, supply)
-            particle['position'] = np.floor(new_pos)
-
-    
-    
-def optimise(demand, supply):
-    
-    start = time.perf_counter()
-
-    iterations = 50
-    
-    gbest_val_list  = []
-    gbest_pos_list  = []
-    
-    swarm = CPSO(20)
-    swarm.initialise(demand, supply)
-    swarm.pick_informants_ring_topology()
-    
-    for i in range(iterations):
-        swarm.calculate_fitness()
-        swarm.set_pbest()
-        swarm.set_lbest()
-        swarm.set_gbest()  
-        swarm.set_constricted_velocity()
-        swarm.move_random_back(demand, supply)
-
-        print(f"Iteration: {i} gbest_val: {round(swarm.gbest_val, 2)}")    
-
-        gbest_val_list.append(round(swarm.gbest_val, 2))
-        if i == iterations-1: # Get the value from the last iteration
-            gbest_pos_list.append(swarm.gbest_pos)
-            if feasible_vec(swarm.gbest_pos, demand, supply):
-                print("Constraints met!")
-    
-    end = time.perf_counter()
-    total_time = round((end-start),2)
-
-    return np.array(gbest_val_list), total_time
-
-
-    
-
-
 
 
 if __name__ == '__main__':
-    gbest_vals, total_time = optimise(quantity.values, supply.values)
-    plot_results(gbest_vals, total_time)
-    
+    pass

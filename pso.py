@@ -168,7 +168,24 @@ def split_list(particle_list, num_particles):
 
 
 particle_list = joblib.load('particle_list')
-particles = split_list(particle_list, 20)
+split_particles_list = split_list(particle_list, 20)
+
+
+def make_result_matrix(data):
+    ''' Takes the results data and converts it into a 
+        DataFrame'''
+    # 1 for time float + len of data for gbest_vals
+    size = (1 + len(data[0][0]), len(data))
+    arr = np.zeros(size)
+    for i, d in enumerate(data):
+        arr[:len(d[0]),i] = d[0] # put gbest_vals 
+        arr[-1,:] = d[1] # put time data in the last row
+    df = pd.DataFrame(arr, columns =[str(i)+"_run" for i in range(len(data))])
+    as_list = df.index.tolist()
+    as_list[-1] = "Time" # Make the index value of last row to time
+    df.index = as_list
+    return df
+
 
 @dataclass
 class PSO:
@@ -223,6 +240,7 @@ class PSO:
             if particle['lbest_val'] >= self.gbest_val:
                 self.gbest_val = particle['lbest_val']
                 self.gbest_pos = particle['lbest_pos']
+
 
 
 if __name__ == '__main__':

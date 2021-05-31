@@ -6,7 +6,7 @@ import random
 import time
 import matplotlib.pyplot as plt
 import cProfile, pstats, io # Needed for profile
-from pso import PSO, random_back, quantity, supply, feasible_vec, plot_results, split_particles_list, make_result_matrix
+from pso import PSO, random_back, quantity, supply, feasible_vec, split_particles_list, experiment
 
 
 demand = quantity.values
@@ -33,17 +33,18 @@ class CPSO(PSO):
             particle['position'] = np.floor(new_pos)
 
     
-def optimise(demand, supply):
+def optimise(init_pos):
 
     start = time.perf_counter()
 
-    iterations = 10
+    iterations = 100
     
     gbest_val_list  = []
     gbest_pos_list  = []
     
     swarm = CPSO()
-    swarm.initialise(demand, supply)
+    # swarm.initialise(demand, supply)
+    swarm.initialise_with_particle_list(init_pos)
     swarm.pick_informants_ring_topology()
     
     for i in range(iterations):
@@ -63,25 +64,13 @@ def optimise(demand, supply):
                 print("Constraints met!")
     
     end = time.perf_counter()
-    total_time = round((end-start),2)
+    total_time = end-start
 
     return gbest_val_list, total_time
 
 
-def experiment(split_particles_list, experiment_name):
-    
-    results = [optimise(demand, supply) for i in range(len(split_particles_list))]
-
-    experiment_results = make_result_matrix(results)
-    experiment_results.to_excel(f"experiment_result_{experiment_name}.xlsx")
-    return experiment_results
-
-    
-    
 
 if __name__ == '__main__':
     
-    # gbest_vals, total_time = optimise(demand, supply)
-    # plot_results(gbest_vals, total_time)
-
-    print(experiment(split_particles_list[0:2], "trial"))
+    print(experiment(optimise, split_particles_list[:2], "test"))
+    

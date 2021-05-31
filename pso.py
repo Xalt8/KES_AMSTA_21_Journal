@@ -167,10 +167,6 @@ def split_list(particle_list, num_particles):
     return [particle_list[i:i+num_particles] for i in range(0, len(particle_list), num_particles)]
 
 
-particle_list = joblib.load('particle_list')
-split_particles_list = split_list(particle_list, 20)
-
-
 def make_result_matrix(data):
     ''' Takes the results data and converts it into a 
         DataFrame'''
@@ -202,6 +198,12 @@ class PSO:
     def initialise(self, demand, supply):
         for particle in self.particles:
             particle['position'] = random_instantiates_vector(demand, supply)
+            particle['pbest_val'] = -np.Inf
+            particle['velocity'] = np.zeros(particle['position'].size)
+    
+    def initialise_with_particle_list(self, particle_pos_list):
+        for particle, pos in zip(self.particles, particle_pos_list):
+            particle['position'] = pos
             particle['pbest_val'] = -np.Inf
             particle['velocity'] = np.zeros(particle['position'].size)
     
@@ -240,6 +242,22 @@ class PSO:
             if particle['lbest_val'] >= self.gbest_val:
                 self.gbest_val = particle['lbest_val']
                 self.gbest_pos = particle['lbest_pos']
+
+
+particle_list = joblib.load('particle_list')
+split_particles_list = split_list(particle_list, PSO.num_particles)
+
+
+def experiment(optimise_func, split_particles_list, experiment_name):
+    ''' optimise_func: optimisation function -> func
+        split_particles_list: list of particle positions for initialisation -> List
+        experiment_name: name to save the excel results -> String
+    '''
+    results = [optimise_func(init_pos) for init_pos in split_particles_list]
+
+    experiment_results = make_result_matrix(results)
+    experiment_results.to_excel(f"experiment_result_{experiment_name}.xlsx")
+    return experiment_results
 
 
 

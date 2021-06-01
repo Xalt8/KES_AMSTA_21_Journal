@@ -2,10 +2,8 @@
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
-import random
 import time
 import matplotlib.pyplot as plt
-import cProfile, pstats, io # Needed for profile
 from pso import PSO, random_back, quantity, supply, feasible_vec, split_particles_list, experiment
 
 
@@ -43,7 +41,7 @@ def optimise(init_pos):
     gbest_pos_list  = []
     
     swarm = CPSO()
-    # swarm.initialise(demand, supply)
+    # swarm.initialise()
     swarm.initialise_with_particle_list(init_pos)
     swarm.pick_informants_ring_topology()
     
@@ -60,7 +58,7 @@ def optimise(init_pos):
         gbest_val_list.append(round(swarm.gbest_val, 2))
         if i == iterations-1: # Get the value from the last iteration
             gbest_pos_list.append(swarm.gbest_pos)
-            if feasible_vec(swarm.gbest_pos, demand, supply):
+            if feasible_vec(swarm.gbest_pos):
                 print("Constraints met!")
     
     end = time.perf_counter()
@@ -72,5 +70,5 @@ def optimise(init_pos):
 
 if __name__ == '__main__':
     
-    print(experiment(optimise, split_particles_list[:2], "test"))
-    
+    # print(experiment(optimise, split_particles_list[:2], "test"))
+    optimise(split_particles_list[0])

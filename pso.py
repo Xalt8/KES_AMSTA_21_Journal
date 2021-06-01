@@ -20,11 +20,14 @@ transport.set_index(quantity.index, inplace=True)
 supply = products['Qty(eggs)']/products['eggs/pack']
 cost_eggs = np.sum(products['Qty(eggs)'].values * products['Cost/egg'].values)
 
+demand = quantity.values
+
 ### Functions ###
 
-def random_instantiates_vector(demand, supply):
+def random_instantiates_vector():
     ''' Takes demand and supply constraints and returns a vector
         with random values that meet demand and supply constraints.'''
+    global demand, supply
     mat = np.zeros(demand.shape)
     for d_row, s, mat_row in zip(demand, supply, mat):
         for j , d in enumerate(d_row):
@@ -58,22 +61,24 @@ def calculate_profit(vec):
     return np.round(profit)
 
 
-def feasible_vec(vec, demand, supply):
+def feasible_vec(vec):
     ''' Returns True if the vector meets demand and supply
-        constraints'''
+        constraints -> bool'''
+    global demand, supply
     mat = vec.reshape(demand.shape) 
     demand_check = np.all((mat <= demand) & (mat >=0))
     supply_check = np.all((mat.sum(axis=1)<=supply) & (mat.sum(axis=1)>=0))
     return demand_check and supply_check 
 
 
-def poss_val(index, val, vec, demand, supply):
+def poss_val(index, val, vec):
     ''' Returns True if the 'val' being placed in 
         'index' position of 'vec' meets 'demand' and 'supply' 
-        constraints '''
+        constraints 
+        Used for random_back() & sib_mix() '''
     vec_copy = vec.copy()
     vec_copy[index]=val
-    return feasible_vec(vec_copy, demand, supply)  
+    return feasible_vec(vec_copy)  
 
 
 def random_val(vec, index, demand, supply):
@@ -93,26 +98,26 @@ def random_val(vec, index, demand, supply):
 def random_back(position, velocity):
     ''' Takes a position and a velocity and returns a new position that
         meets demand & supply constraints '''
-    global quantity, supply
-    demand = quantity.values
-    
+    global demand, supply
+        
     vec = position + velocity
-    if feasible_vec(vec, demand, supply):
+    if feasible_vec(vec):
         return vec
     else:
         inds = np.where(demand.flatten()!=0)[0] # Returns a tuple -> (inds, )
         new_pos = np.zeros(position.size)
         for i in inds:
-            if poss_val(i, (int(position[i]+velocity[i])), new_pos, demand, supply):
+            if poss_val(i, (int(position[i]+velocity[i])), new_pos):
                 new_pos[i] = int(position[i] + velocity[i])
             else:
                 r = random_val(new_pos, i, demand, supply)
                 new_pos[i] = r
         
-        if feasible_vec(new_pos, demand, supply):
+        if feasible_vec(new_pos):
             return new_pos
         else:
             print(f'random_back() returned an unfeasible vector')
+
 
 def time_function(function):
     def wrapper(*args, **kwargs):
@@ -195,9 +200,9 @@ class PSO:
         self.particles = [dict() for _ in range(self.num_particles)]
     
     
-    def initialise(self, demand, supply):
+    def initialise(self):
         for particle in self.particles:
-            particle['position'] = random_instantiates_vector(demand, supply)
+            particle['position'] = random_instantiates_vector()
             particle['pbest_val'] = -np.Inf
             particle['velocity'] = np.zeros(particle['position'].size)
     

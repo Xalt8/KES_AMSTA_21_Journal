@@ -52,7 +52,7 @@ def random_instantiate_row(demand, supply):
     return random_row
 
 
-def random_jump(vec, demand, supply):
+def random_jump(vec):
     ''' Takes a percentage of rows from a matrix and replaces 
         them with random values that meet constraints.
         Parameters:
@@ -62,13 +62,14 @@ def random_jump(vec, demand, supply):
         row_indices: randomly selects number of rows (num_rows)
         making sure the same row is not selected more than once
         Replaces the rows by random values & returns vector.'''
+    global demand, supply
 
     vec = vec.reshape(demand.shape)
     percent_to_replace = .4
     num_rows = int(np.ceil(vec.shape[0]*percent_to_replace))
     row_indices = np.random.choice(vec.shape[0], num_rows, replace=False)
     for i in row_indices:
-        vec[i]=random_instantiate_row(demand[i], supply[i])
+        vec[i] = random_instantiate_row(demand[i], supply[i])
     return vec.flatten()
 
 
@@ -93,7 +94,7 @@ class SIB(PSO):
                 particle['position'] = particle['mixwGB_pos']
                 particle['pbest_val'] = particle['mixwGB_val']
             else:
-                particle['position'] = random_jump(particle['position'], quantity.values, supply.values)
+                particle['position'] = random_jump(particle['position'])
 
 def optimise():
     

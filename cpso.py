@@ -35,7 +35,7 @@ def optimise(init_pos):
 
     start = time.perf_counter()
 
-    iterations = 100
+    iterations = 500
     
     gbest_val_list  = []
     gbest_pos_list  = []
@@ -70,5 +70,5 @@ def optimise(init_pos):
 
 if __name__ == '__main__':
     
-    # print(experiment(optimise, split_particles_list[:2], "test"))
-    optimise(split_particles_list[0])
+    print(experiment(optimise, split_particles_list, "experiment_cpso"))
+    # optimise(split_particles_list[0])

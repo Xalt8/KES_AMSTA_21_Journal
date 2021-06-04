@@ -81,9 +81,11 @@ def poss_val(index, val, vec):
     return feasible_vec(vec_copy)  
 
 
-def random_val(vec, index, demand, supply):
+def random_val(vec, index):
     ''' Returns a random value for a vec at a given index position
-        that meets demand and supply constraints'''
+        that meets demand and supply constraints
+        Used in random_back() & sibv_mix()'''
+    global demand, supply
     mat = vec.reshape(demand.shape)
     mat_row_ind, mat_col_ind = np.unravel_index(index,(demand.shape))
     alloc_supply = [np.sum(m, axis=0) for m in mat]
@@ -110,7 +112,7 @@ def random_back(position, velocity):
             if poss_val(i, (int(position[i]+velocity[i])), new_pos):
                 new_pos[i] = int(position[i] + velocity[i])
             else:
-                r = random_val(new_pos, i, demand, supply)
+                r = random_val(new_pos, i)
                 new_pos[i] = r
         
         if feasible_vec(new_pos):

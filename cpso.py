@@ -4,10 +4,38 @@ import pandas as pd
 from dataclasses import dataclass
 import time
 import matplotlib.pyplot as plt
-from pso import PSO, random_back, quantity, supply, feasible_vec, split_particles_list, experiment
+from pso import PSO, demand, supply, feasible_vec, split_particles_list, experiment, time_function, poss_val, random_val, plot_results
+from numba import jit, njit
 
 
-demand = quantity.values
+
+## Funtions
+
+@jit(nopython=True)
+def random_back(position, velocity):
+    ''' Takes a position and a velocity and returns a new position that
+        meets demand & supply constraints '''
+    global demand, supply
+        
+    vec = position + velocity
+    if feasible_vec(vec):
+        return vec
+    else:
+        inds = np.where(demand.flatten()!=0)[0] # Returns a tuple -> (inds, )
+        new_pos = np.zeros(position.size)
+        for i in inds:
+            if poss_val(i, (int(position[i]+velocity[i])), new_pos):
+                new_pos[i] = int(position[i] + velocity[i])
+            else:
+                r = random_val(new_pos, i)
+                new_pos[i] = r
+        
+        if feasible_vec(new_pos):
+            return new_pos
+        else:
+            print(f'random_back() returned an unfeasible vector')
+
+
 
 @dataclass
 class CPSO(PSO):
@@ -29,13 +57,15 @@ class CPSO(PSO):
         for particle in self.particles:
             new_pos = random_back(particle['position'], particle['velocity'])
             particle['position'] = np.floor(new_pos)
+            
+        
 
-    
+@time_function    
 def optimise(init_pos):
 
     start = time.perf_counter()
 
-    iterations = 500
+    iterations = 300
     
     gbest_val_list  = []
     gbest_pos_list  = []
@@ -45,6 +75,7 @@ def optimise(init_pos):
     swarm.initialise_with_particle_list(init_pos)
     swarm.pick_informants_ring_topology()
     
+    
     for i in range(iterations):
         swarm.calculate_fitness()
         swarm.set_pbest()
@@ -52,7 +83,7 @@ def optimise(init_pos):
         swarm.set_gbest()  
         swarm.set_constricted_velocity()
         swarm.move_random_back()
-
+        
         print(f"Iteration: {i} gbest_val: {round(swarm.gbest_val, 2)}")    
 
         gbest_val_list.append(round(swarm.gbest_val, 2))
@@ -70,5 +101,7 @@ def optimise(init_pos):
 
 if __name__ == '__main__':
     
-    print(experiment(optimise, split_particles_list, "experiment_cpso"))
-    # optimise(split_particles_list[0])
+    # experiment(optimise, split_particles_list[45:50], "cpso[45_50]")
+    # print("Done")
+    gbest_vals, total_time = optimise(split_particles_list[0])
+    plot_results(gbest_vals, total_time)

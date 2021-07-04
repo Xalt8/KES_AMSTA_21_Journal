@@ -6,9 +6,7 @@ import time
 import matplotlib.pyplot as plt
 import cProfile, pstats, io # Needed for profile()
 import joblib
-from time import gmtime
-from time import strftime
-from numba import jit
+
 
 ### Read data ####
 
@@ -22,9 +20,7 @@ transport.set_index(quantity.index, inplace=True)
 supply = products['Qty(eggs)']/products['eggs/pack']
 cost_eggs = np.sum(products['Qty(eggs)'].values * products['Cost/egg'].values)
 
-
 demand = quantity.values
-supply = supply.values
 
 ### Functions ###
 
@@ -64,7 +60,7 @@ def calculate_profit(vec):
     profit = sales-total_costs
     return np.round(profit)
 
-@jit(nopython=True)
+
 def feasible_vec(vec):
     ''' Returns True if the vector meets demand and supply
         constraints -> bool'''
@@ -74,7 +70,7 @@ def feasible_vec(vec):
     supply_check = np.all((mat.sum(axis=1)<=supply) & (mat.sum(axis=1)>=0))
     return demand_check and supply_check 
 
-@jit(nopython=True)
+
 def poss_val(index, val, vec):
     ''' Returns True if the 'val' being placed in 
         'index' position of 'vec' meets 'demand' and 'supply' 
@@ -84,51 +80,53 @@ def poss_val(index, val, vec):
     vec_copy[index]=val
     return feasible_vec(vec_copy)  
 
-@jit(nopython=True)
+
 def random_val(vec, index):
     ''' Returns a random value for a vec at a given index position
         that meets demand and supply constraints
         Used in random_back() & sibv_mix()'''
     global demand, supply
     mat = vec.reshape(demand.shape)
-    
-    demand_index = np.arange(vec.shape[0]).reshape(demand.shape)
-    mat_row_ind, mat_col_ind = np.where(demand_index == index)
-    
-    
-    # mat_row_ind, mat_col_ind = np.unravel_index(index,(demand.shape))
-    # alloc_supply = [np.sum(m, axis=0) for m in mat]
-    
-    alloc_supply = np.sum(mat, axis=1)
-
-    avail_supply = supply[mat_row_ind]-(alloc_supply[mat_row_ind]-mat[mat_row_ind][0][mat_col_ind])
-    avail_demand = demand[mat_row_ind][0][mat_col_ind]
-    
-    avail_supply = avail_supply.astype(np.int64)[0] 
-    avail_demand = avail_demand.astype(np.int64)[0]
-
-    if (avail_supply) and (avail_demand) > 0:
-        r = np.random.randint(np.array([0]).astype(np.int64)[0], np.minimum(avail_supply,avail_demand))
+    mat_row_ind, mat_col_ind = np.unravel_index(index,(demand.shape))
+    alloc_supply = [np.sum(m, axis=0) for m in mat]
+    avail_supply = supply[mat_row_ind]-(alloc_supply[mat_row_ind]-mat[mat_row_ind][mat_col_ind])
+    avail_demand = demand[mat_row_ind][mat_col_ind]
+    if min(avail_supply, avail_demand)>0:
+        return random.randint(0, min(avail_supply, avail_demand))
     else:
-        r = 0
-    
-    return r
+        return 0
 
-    # if (avail_supply and avail_demand) > 0:
-    #     return random.randint(0, min(avail_supply, avail_demand))
-    # else:
-    #     return 0
+
+def random_back(position, velocity):
+    ''' Takes a position and a velocity and returns a new position that
+        meets demand & supply constraints '''
+    global demand, supply
+        
+    vec = position + velocity
+    if feasible_vec(vec):
+        return vec
+    else:
+        inds = np.where(demand.flatten()!=0)[0] # Returns a tuple -> (inds, )
+        new_pos = np.zeros(position.size)
+        for i in inds:
+            if poss_val(i, (int(position[i]+velocity[i])), new_pos):
+                new_pos[i] = int(position[i] + velocity[i])
+            else:
+                r = random_val(new_pos, i)
+                new_pos[i] = r
+        
+        if feasible_vec(new_pos):
+            return new_pos
+        else:
+            print(f'random_back() returned an unfeasible vector')
 
 
 def time_function(function):
-    ''' a decorator used to return the time taken 
-        for a function to return a result.
-    '''
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
         result = function(*args, **kwargs)
         end = time.perf_counter()
-        print(f'\n{function.__name__}() took {strftime("%H:%M:%S", gmtime(end-start))} to run\n')
+        print(f'\n{function.__name__}() took {round((end-start),2)} seconds to run')
         return result
     return wrapper
 

@@ -4,15 +4,3 @@ Data.xlsx
 test.ipynb
 **/__pycache__
 cpso_old.py
-experiment_result_cpso[0_2].xlsx
-experiment_result_cpso[2_7].xlsx
-.gitignore
-experiment_result_cpso[7_10].xlsx
-experiment_result_cpso[0_2].xlsx
-experiment_result_cpso[2_7].xlsx
-experiment_result_cpso[7_10].xlsx
-experiment_result_cpso[10_16].xlsx
-experiment_result_cpso[16_25].xlsx
-experiment_result_cpso[25_35].xlsx
-experiment_result_cpso[35_45].xlsx
-experiment_result_cpso[45_50].xlsx
